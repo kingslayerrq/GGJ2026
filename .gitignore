@@ -28,6 +28,11 @@
 # Visual Studio cache directory
 .vs/
 
+# JetBrains Rider / IntelliJ (workspace + caches)
+.idea/
+*.sln.iml
+*.DotSettings.user
+
 # Gradle cache directory
 .gradle/
 
