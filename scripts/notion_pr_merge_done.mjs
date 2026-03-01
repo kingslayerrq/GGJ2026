@@ -8,11 +8,16 @@ const WH_DONE = process.env.DISCORD_WEBHOOK_DONE;
 const P_STATUS = "Status";
 const STATUS_DONE = "Done";
 
+const P_DONE_NOTIFIED = "Done Notified";
+
 function mustEnv(name, v) {
   if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
 }
+
 mustEnv("NOTION_TOKEN", NOTION_TOKEN);
+// Optional: uncomment if you want hard-fail when webhook missing
+// mustEnv("DISCORD_WEBHOOK_DONE", WH_DONE);
 
 async function notionFetch(path, method, body) {
   const res = await fetch(`https://api.notion.com/v1${path}`, {
@@ -24,6 +29,7 @@ async function notionFetch(path, method, body) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Notion ${method} ${path} failed: ${res.status} ${text}`);
@@ -40,7 +46,7 @@ async function notionGetPage(pageId) {
 }
 
 async function discordPost(webhookUrl, content) {
-  if (!webhookUrl) return;
+  if (!webhookUrl) return; // allow "no webhook" mode
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -49,7 +55,9 @@ async function discordPost(webhookUrl, content) {
       allowed_mentions: { parse: ["users"] },
     }),
   });
-  if (!res.ok) throw new Error(`Discord webhook failed: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`Discord webhook failed: ${res.status} ${await res.text()}`);
+  }
 }
 
 function normalizeNotionId(hexOrHyphenated) {
@@ -62,14 +70,22 @@ function extractNotionPageIds(text) {
   if (!text) return [];
   const ids = new Set();
 
-  // 32 hex
-  for (const m of text.matchAll(/\b[0-9a-fA-F]{32}\b/g)) {
-    const id = normalizeNotionId(m[0]);
-    if (id) ids.add(id);
-  }
-  // hyphenated
-  for (const m of text.matchAll(/\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g)) {
-    const id = normalizeNotionId(m[0]);
+  // Only accept IDs that appear inside a Notion URL (notion.so or *.notion.site)
+  const urlRe = /https?:\/\/[^\s)]+/g;
+
+  for (const m of text.matchAll(urlRe)) {
+    // Trim common trailing punctuation from Markdown or sentences
+    const url = m[0].replace(/[>\])\.,;]+$/g, "");
+
+    if (!/notion\.(so|site)\//i.test(url)) continue;
+
+    const idMatch =
+      url.match(/[0-9a-fA-F]{32}/) ||
+      url.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+
+    if (!idMatch) continue;
+
+    const id = normalizeNotionId(idMatch[0]);
     if (id) ids.add(id);
   }
 
@@ -98,6 +114,12 @@ async function main() {
     return;
   }
 
+  // Extra safety: only act for merges into main
+  if (pr.base?.ref !== "main") {
+    console.log(`Merged into ${pr.base?.ref}; skipping (only sync for main).`);
+    return;
+  }
+
   const ids = extractNotionPageIds(`${pr.title}\n${pr.body ?? ""}`);
   if (!ids.length) {
     console.log("No Notion page IDs found in PR title/body.");
@@ -105,15 +127,25 @@ async function main() {
   }
 
   for (const pageId of ids) {
-    await notionPatchPage(pageId, {
-      [P_STATUS]: { status: { name: STATUS_DONE } },
-    });
+    try {
+      // Atomically mark Done + Done Notified to prevent poller duplicates
+      await notionPatchPage(pageId, {
+        [P_STATUS]: { status: { name: STATUS_DONE } },
+        [P_DONE_NOTIFIED]: { checkbox: true },
+      });
 
-    const page = await notionGetPage(pageId);
-    const title = getTitle(page);
-    const url = page.url ?? "(no url)";
+      const page = await notionGetPage(pageId);
+      const title = getTitle(page);
+      const url = page.url ?? "(no url)";
 
-    await discordPost(WH_DONE, `✅ Done (via PR merge): **${title}**\nPR: ${pr.html_url}\n${url}`);
+      await discordPost(
+        WH_DONE,
+        `✅ Done (via PR merge): **${title}**\nPR: ${pr.html_url}\n${url}`
+      );
+    } catch (err) {
+      console.warn(`Skipping Notion page ${pageId}: ${String(err)}`);
+      continue;
+    }
   }
 }
 

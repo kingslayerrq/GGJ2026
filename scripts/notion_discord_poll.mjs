@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATA_SOURCE_ID = process.env.NOTION_DATA_SOURCE_ID;
-const NOTION_VERSION = process.env.NOTION_VERSION ?? "2025-09-03"; // latest version recommended :contentReference[oaicite:3]{index=3}
+const NOTION_VERSION = process.env.NOTION_VERSION ?? "2025-09-03";
 
 const WH_ASSIGN = process.env.DISCORD_WEBHOOK_ASSIGNMENTS;
 const WH_DEADLINES = process.env.DISCORD_WEBHOOK_DEADLINES;
@@ -11,7 +11,7 @@ const WH_DONE = process.env.DISCORD_WEBHOOK_DONE;
 const REMIND_WITHIN_DAYS = Number(process.env.REMIND_WITHIN_DAYS ?? "2");
 const MAP_PATH = process.env.NOTION_DISCORD_MAP_PATH ?? ".github/notion_discord_map.json";
 
-// ---- Notion property names (match your DB) ----
+// ---- Notion property names (match your DB exactly) ----
 const P_STATUS = "Status";
 const P_ASSIGNEE = "Assignee";
 const P_DUE = "Due date";
@@ -20,7 +20,7 @@ const P_LAST_NOTIFIED_ASSIGNEES = "Last Notified Assignees";
 const P_DUE_REMINDER_SENT_FOR = "Due Reminder Sent For";
 const P_DONE_NOTIFIED = "Done Notified";
 
-const STATUS_DONE = "Done"; // from your screenshot
+const STATUS_DONE = "Done";
 
 function mustEnv(name, v) {
   if (!v) throw new Error(`Missing env var: ${name}`);
@@ -33,12 +33,16 @@ mustEnv("NOTION_DATA_SOURCE_ID", NOTION_DATA_SOURCE_ID);
 const notionDiscordMap = JSON.parse(await fs.readFile(MAP_PATH, "utf8"));
 
 function ymd(date) {
-  // Return YYYY-MM-DD in UTC for stable comparisons
   const d = new Date(date);
   const yyyy = d.getUTCFullYear();
   const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(d.getUTCDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function startOfTodayUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
 function addDaysUTC(date, days) {
@@ -52,11 +56,12 @@ async function notionFetch(path, method, body) {
     method,
     headers: {
       Authorization: `Bearer ${NOTION_TOKEN}`,
-      "Notion-Version": NOTION_VERSION, // required header :contentReference[oaicite:4]{index=4}
+      "Notion-Version": NOTION_VERSION,
       "Content-Type": "application/json",
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Notion ${method} ${path} failed: ${res.status} ${text}`);
@@ -65,7 +70,6 @@ async function notionFetch(path, method, body) {
 }
 
 async function notionQueryAllPages() {
-  // Query a data source (new API) :contentReference[oaicite:5]{index=5}
   const out = [];
   let start_cursor = undefined;
 
@@ -84,7 +88,6 @@ async function notionQueryAllPages() {
 }
 
 async function notionPatchPage(pageId, properties) {
-  // Update page properties :contentReference[oaicite:6]{index=6}
   return notionFetch(`/pages/${pageId}`, "PATCH", { properties });
 }
 
@@ -95,9 +98,10 @@ async function discordPost(webhookUrl, content) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       content,
-      allowed_mentions: { parse: ["users"] }, // control pings :contentReference[oaicite:7]{index=7}
+      allowed_mentions: { parse: ["users"] }, // prevents @everyone/@here unless you explicitly allow it
     }),
   });
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Discord webhook failed: ${res.status} ${text}`);
@@ -132,9 +136,8 @@ function getCheckbox(page, name) {
 }
 
 function getTitle(page) {
-  // Find the title property dynamically (avoids depending on the column name)
   const props = page.properties ?? {};
-  for (const [k, v] of Object.entries(props)) {
+  for (const v of Object.values(props)) {
     if (v?.type === "title") {
       const t = v.title ?? [];
       return t.map((x) => x.plain_text ?? "").join("") || "Untitled";
@@ -157,18 +160,19 @@ function formatAssigneeMentions(assignees) {
 async function main() {
   const pages = await notionQueryAllPages();
 
-  const todayUTC = new Date();
-  const dueCutoff = addDaysUTC(todayUTC, REMIND_WITHIN_DAYS);
+  const todayStartUTC = startOfTodayUTC();
+  const dueCutoffUTC = addDaysUTC(todayStartUTC, REMIND_WITHIN_DAYS);
 
   const unmapped = new Set();
 
   for (const page of pages) {
     const pageId = page.id;
     const title = getTitle(page);
-    const url = page.url ?? "(no url)";
+    const url = (page.url ?? "(no url)").replace(/[>\])\.,;]+$/g, "");
     const status = getStatus(page);
 
     const assignees = getAssignees(page);
+
     for (const a of assignees) {
       if (!notionDiscordMap[a.id]) unmapped.add(a.id);
     }
@@ -178,7 +182,7 @@ async function main() {
     const lastNotifiedKey = getRichTextString(page, P_LAST_NOTIFIED_ASSIGNEES);
 
     if (assigneeKey !== lastNotifiedKey) {
-      // Only notify when it becomes assigned to someone (not when cleared)
+      // Only notify when it becomes assigned (not when cleared)
       if (assignees.length > 0) {
         const mention = formatAssigneeMentions(assignees);
         const due = getDueStart(page);
@@ -195,17 +199,20 @@ async function main() {
       });
     }
 
-    // --- B) Due soon reminder (once per due date value) ---
+    // --- B) Due soon reminder (upcoming only; excludes overdue) ---
     if (status !== STATUS_DONE) {
       const due = getDueStart(page);
       if (due) {
         const dueYmd = ymd(due);
         const lastDueNotified = getRichTextString(page, P_DUE_REMINDER_SENT_FOR);
 
+        // Compare dates at day precision in UTC
         const dueDateUTC = new Date(Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate()));
-        const isDueSoon = dueDateUTC <= dueCutoff;
+        const isUpcomingDueSoon =
+          dueDateUTC >= todayStartUTC && // exclude overdue
+          dueDateUTC <= dueCutoffUTC;
 
-        if (isDueSoon && lastDueNotified !== dueYmd) {
+        if (isUpcomingDueSoon && lastDueNotified !== dueYmd) {
           const mention = formatAssigneeMentions(assignees);
           await discordPost(
             WH_DEADLINES,
