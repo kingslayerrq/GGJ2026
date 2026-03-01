@@ -1,0 +1,50 @@
+name: Unity Tests
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+# Needed so the action can annotate PRs / create check runs
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  tests:
+    name: EditMode + PlayMode Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Speeds up Unity imports a LOT
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Tests-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Tests-
+            Library-
+
+      - name: Run Unity tests
+        id: unity-tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          testMode: all
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Unity-Test-Results
+          path: ${{ steps.unity-tests.outputs.artifactsPath }}
