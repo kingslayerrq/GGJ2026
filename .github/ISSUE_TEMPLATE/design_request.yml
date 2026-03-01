@@ -1,0 +1,61 @@
+name: Design Request
+description: Request design input/spec for engineering implementation
+title: "[DESIGN] "
+labels:
+  - request:design
+  - type:feature
+
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - UI / HUD
+        - Interaction / UX
+        - Gameplay system
+        - VFX
+        - Level / World
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal (player-facing)
+      description: What problem are we solving / what experience do we want?
+      placeholder: e.g., "Players need a clear way to compare equipped items quickly."
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec
+    attributes:
+      label: Proposed design spec
+      description: States, rules, edge cases, inputs, failure cases.
+      placeholder: |
+        - States:
+        - Inputs:
+        - Edge cases:
+        - Visual behavior:
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: 'Bullet list: "Done when..."'
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: refs
+    attributes:
+      label: References
+      description: Mockups, videos, screenshots, comparable games, links.
+      placeholder: "Paste links here."
