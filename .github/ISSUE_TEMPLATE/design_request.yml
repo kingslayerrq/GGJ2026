@@ -43,17 +43,6 @@ body:
       required: true
 
   - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance criteria
-      description: 'Bullet list: "Done when..."'
-      placeholder: |
-        - [ ] ...
-        - [ ] ...
-    validations:
-      required: true
-
-  - type: textarea
     id: refs
     attributes:
       label: References
