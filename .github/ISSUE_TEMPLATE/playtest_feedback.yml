@@ -1,0 +1,108 @@
+name: Playtest Feedback
+description: Capture player feedback with context, pain points, and suggestions
+title: "[PLAYTEST] "
+labels:
+  - type:playtest
+  - feedback
+body:
+  - type: dropdown
+    id: build_type
+    attributes:
+      label: Build tested
+      options:
+        - Editor
+        - Dev Build
+        - Release Build
+    validations:
+      required: true
+
+  - type: input
+    id: build_version
+    attributes:
+      label: Build version / commit
+      placeholder: "v0.3.1 / commit abc123"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - iOS
+        - Android
+        - WebGL
+        - VR (Quest)
+        - VR (PC)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: session
+    attributes:
+      label: Session context
+      description: What did the tester do and for how long?
+      placeholder: |
+        - Duration:
+        - Goal (what you tried):
+        - Skill level (new/experienced):
+    validations:
+      required: true
+
+  - type: textarea
+    id: highlights
+    attributes:
+      label: What felt good?
+      placeholder: "- ..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: pain_points
+    attributes:
+      label: What felt confusing / frustrating?
+      placeholder: "- ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: moments
+    attributes:
+      label: Specific moments (timestamped if possible)
+      description: “At 03:20 I didn’t know where to go…”
+      placeholder: |
+        - 00:45 ...
+        - 03:20 ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: suggestions
+    attributes:
+      label: Suggestions / ideas
+      placeholder: "- ..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (from tester POV)
+      options:
+        - Must-fix for next build
+        - Should-fix soon
+        - Nice-to-have
+    validations:
+      required: true
+
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots / clips / notes
+      placeholder: "Paste links here."
+    validations:
+      required: false

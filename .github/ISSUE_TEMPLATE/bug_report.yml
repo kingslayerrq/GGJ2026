@@ -1,0 +1,110 @@
+name: Bug Report
+description: Report a reproducible bug with clear steps + expected/actual results
+title: "[BUG] "
+labels:
+  - bug
+  - type:bug
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - S0 - Crash/Blocker
+        - S1 - Major (prevents progress)
+        - S2 - Minor (workaround exists)
+        - S3 - Cosmetic
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - UI / HUD
+        - Input
+        - Player / Character
+        - Camera
+        - Physics / Collision
+        - AI / NPC
+        - Audio
+        - VFX
+        - Level / World
+        - Save / Load
+        - Build / Platform
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One sentence describing what’s wrong.
+      placeholder: "Opening inventory sometimes locks movement."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Load scene "..."
+        2. Press ...
+        3. Do ...
+        4. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      placeholder: "Player can move after closing inventory."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      placeholder: "Player movement remains disabled until restart."
+    validations:
+      required: true
+
+  - type: textarea
+    id: frequency
+    attributes:
+      label: Frequency / Conditions
+      description: How often? Any patterns?
+      placeholder: "3/10 times, mostly after sprinting."
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Paste versions + platform info.
+      placeholder: |
+        - Unity: 2022.3.x
+        - Platform: Windows 11 / macOS / Quest / etc
+        - Build: Editor / Dev build / Release
+        - Branch/Commit:
+        - Input: KBM / Controller
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots, short video, profiler capture.
+      placeholder: |
+        - Player.log:
+        - Screenshots:
+        - Video:
+    validations:
+      required: false
