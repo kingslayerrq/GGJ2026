@@ -1,0 +1,64 @@
+name: Content Request
+description: Request assets/content with specs so it plugs into Unity smoothly
+title: "[CONTENT] "
+labels:
+  - type:content
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - 2D Art / UI
+        - 3D Model
+        - Animation
+        - VFX
+        - Audio / SFX
+        - Music
+        - Level / Environment
+        - Narrative / Dialogue
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: brief
+    attributes:
+      label: Brief
+      placeholder: "What is needed and why?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec
+    attributes:
+      label: Technical specs
+      description: Unity import details + constraints.
+      placeholder: |
+        - Format (PNG/WAV/FBX/etc):
+        - Size/length:
+        - Looping (Y/N):
+        - Naming convention:
+        - Pivot/origin:
+        - Target folder:
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] Imported into Unity without errors
+        - [ ] Hooked into prefab/system
+        - [ ] Looks/sounds correct in target scene
+    validations:
+      required: true
+
+  - type: textarea
+    id: refs
+    attributes:
+      label: References
+      placeholder: "Links, screenshots, moodboard, examples."
+    validations:
+      required: false
