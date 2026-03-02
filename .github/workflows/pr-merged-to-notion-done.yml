@@ -1,0 +1,26 @@
+name: PR merged → Notion Done + Discord
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: ${{ github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Mark linked Notion tasks Done and notify
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_VERSION: "2025-09-03"
+          DISCORD_WEBHOOK_DONE: ${{ secrets.DISCORD_WEBHOOK_DONE }}
+        run: node scripts/notion_pr_merge_done.mjs
