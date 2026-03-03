@@ -48,8 +48,8 @@ jobs:
           restore-keys: |
             Library-Tests-${{ runner.os }}-
 
-      - name: Run Unity tests
-        id: unity-tests
+      - name: Run edit mode tests
+        id: unity-editmode-tests
         uses: game-ci/unity-test-runner@v4.3.1
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -59,6 +59,23 @@ jobs:
           XDG_CACHE_HOME: ${{ github.workspace }}/.unity/cache
           XDG_DATA_HOME: ${{ github.workspace }}/.unity/data
           XDG_CONFIG_HOME: ${{ github.workspace }}/.unity/config
+          MONO_GC_PARAMS: "soft-heap-limit=512m,max-heap-size=1024m"
         with:
-          testMode: all
+          testMode: editmode
+          githubToken: ${{ github.token }}
+      
+      - name: Run PlayMode tests
+        id: unity-playmode-tests
+        uses: game-ci/unity-test-runner@v4.3.1
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          HOME: ${{ github.workspace }}/.unity/home
+          XDG_CACHE_HOME: ${{ github.workspace }}/.unity/cache
+          XDG_DATA_HOME: ${{ github.workspace }}/.unity/data
+          XDG_CONFIG_HOME: ${{ github.workspace }}/.unity/config
+          MONO_GC_PARAMS: "soft-heap-limit=512m,max-heap-size=1024m"
+        with:
+          testMode: playmode
           githubToken: ${{ github.token }}
