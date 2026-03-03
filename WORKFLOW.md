@@ -1,55 +1,62 @@
 # Team Workflow (GitHub + Unity)
 
-This repository uses a PR-based workflow to keep `main` stable.
-Everyone works in feature branches and opens Pull Requests (PRs). Only the Maintainer merges into `main`.
+This repo uses a PR-based workflow to keep `main` stable.
+All work happens in short-lived branches and is merged via Pull Requests (PRs).
+Only the Maintainer merges into `main`.
 
 ---
 
 ## Roles & Responsibilities
 
 ### Maintainer (Main Branch Owner)
-- Owns and protects the `main` branch.
+- Owns and protects `main`.
 - Reviews PRs and merges approved changes into `main`.
-- Resolves merge conflicts when needed (or assigns back to authors).
-- Maintains repo standards (branch rules, templates, CI, releases/tags).
+- Resolves merge conflicts when needed (or requests changes from authors).
+- Maintains repo standards (branch protection rules, templates, CI, releases/tags).
 
 ### Contributors
-- Work on their own branches (no direct commits to `main`).
-- Open PRs for review.
-- Keep PRs focused and easy to review.
-- Respond to review feedback and update PRs promptly.
+- Work in feature branches (no direct commits to `main`).
+- Open PRs early and keep them small/focused.
+- Respond to review feedback quickly.
+- Rebase/update branches when requested.
 
 ---
 
 ## Branching Strategy
 
 ### Protected Branches
-- `main`: always stable, shippable.
+- `main`: always stable and shippable
   - PR required
   - Maintainer-only merge
 
-### Working Branches
+### Working Branches (Required)
 Create a branch from the latest `main`.
 
-**Branch naming (required)**
-- `feature/<short-description>` — new gameplay/system/UI feature
-- `fix/<short-description>` — bug fix
-- `chore/<short-description>` — tooling, configs, repo maintenance
-- `art/<short-description>` — art/audio/assets-only work
-- `docs/<short-description>` — documentation changes
-- `test/<short-description>` — experiments/testing work (if/when used)
+#### Branch naming
+Format:
+- `<type>/<issue-id>-<short-slug>`
 
-**Examples**
-- `feature/player-dash`
-- `fix/camera-follow-jitter`
-- `chore/update-unity-gitignore`
-- `art/new-enemy-sprites`
+Types:
+- `feat/` — new gameplay/system/UI feature
+- `fix/` — bug fix
+- `chore/` — tooling/config/repo maintenance
+- `art/` — art/audio/assets-only work
+- `docs/` — documentation changes
+- `test/` — experiments/testing work
+
+Examples:
+- `feat/123-player-dash`
+- `fix/87-camera-follow-jitter`
+- `chore/140-update-unity-gitignore`
+- `art/52-new-enemy-sprites`
+
+> If there is no issue/ticket, create one first. If you *must* work without a ticket, use `000` temporarily (e.g., `chore/000-build-fix`) and open an issue ASAP.
 
 ---
 
-## Local Workflow (Step-by-step)
+## Local Workflow (Golden Path)
 
 ### 1) Sync `main`
 ```bash
 git checkout main
-git pull origin main
+git pull --rebase origin main
