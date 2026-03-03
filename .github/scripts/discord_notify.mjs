@@ -32,25 +32,54 @@ function extractGithubMentions(text = "") {
 }
 
 function buildUserIndex(mapJson) {
-  const users = mapJson?.users ?? {};
+  const loginToDiscord = new Map(); // login -> discord_id
+  const aliasToLogin = new Map();   // alias -> canonical login
 
-  // login -> discord_id
-  const loginToDiscord = new Map();
-  // alias -> canonical login
-  const aliasToLogin = new Map();
+  const addLogin = (login, discordId) => {
+    if (!login || !discordId) return;
+    loginToDiscord.set(norm(login), String(discordId));
+  };
 
-  for (const [login, info] of Object.entries(users)) {
-    if (!info?.discord_id) continue;
-    loginToDiscord.set(norm(login), String(info.discord_id));
-    for (const a of info.aliases ?? []) {
-      aliasToLogin.set(norm(a), norm(login));
+  const addAliases = (canonicalLogin, aliases) => {
+    const canon = norm(canonicalLogin);
+    for (const a of aliases ?? []) {
+      if (!a) continue;
+      aliasToLogin.set(norm(a), canon);
+    }
+  };
+
+  // ---- Schema A (nested): { users: { login: { discord_id, aliases? } } } ----
+  if (mapJson?.users && typeof mapJson.users === "object") {
+    for (const [login, info] of Object.entries(mapJson.users)) {
+      if (!info) continue;
+      if (typeof info === "string" || typeof info === "number") {
+        addLogin(login, info);
+      } else if (typeof info === "object") {
+        addLogin(login, info.discord_id);
+        addAliases(login, info.aliases);
+      }
+    }
+  }
+  // ---- Schema B (flat): { login: "discord_id" } OR { login: { discord_id, aliases? } } ----
+  else if (mapJson && typeof mapJson === "object") {
+    for (const [login, val] of Object.entries(mapJson)) {
+      // ignore potential metadata keys if you ever add them
+      if (login.startsWith("$") || login === "version") continue;
+
+      if (typeof val === "string" || typeof val === "number") {
+        addLogin(login, val);
+      } else if (val && typeof val === "object") {
+        addLogin(login, val.discord_id);
+        addAliases(login, val.aliases);
+      }
     }
   }
 
   function resolveDiscordId(login) {
     const n = norm(login);
     if (loginToDiscord.has(n)) return loginToDiscord.get(n);
-    if (aliasToLogin.has(n)) return loginToDiscord.get(aliasToLogin.get(n));
+    const canonical = aliasToLogin.get(n);
+    if (canonical && loginToDiscord.has(canonical)) return loginToDiscord.get(canonical);
     return null;
   }
 
