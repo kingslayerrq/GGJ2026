@@ -47,7 +47,7 @@ public class ScreenshotSystem : MonoBehaviour
     private void Update()
     {
         if (isCapturing) return;
-        if (onlyInTargetScene && targetScenes.Contains(SceneManager.GetActiveScene().name)) return;
+        if (onlyInTargetScene && !targetScenes.Contains(SceneManager.GetActiveScene().name)) return;
 
         Keyboard kb = Keyboard.current;
         if (kb == null) return;
