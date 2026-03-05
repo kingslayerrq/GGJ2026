@@ -79,3 +79,4 @@ jobs:
         with:
           testMode: playmode
           githubToken: ${{ github.token }}
+          customParameters: -nographics -aot-only
