@@ -12,9 +12,7 @@ function norm(s) {
 }
 
 function stripCode(text = "") {
-  return text
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/`[^`]*`/g, "");
+  return text.replace(/```[\s\S]*?```/g, "").replace(/`[^`]*`/g, "");
 }
 
 function truncate(text = "", max = 1024) {
@@ -24,16 +22,22 @@ function truncate(text = "", max = 1024) {
 
 function extractGithubMentions(text = "") {
   const clean = stripCode(text);
-  const re = /(^|[^A-Za-z0-9-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)/g;
+  const re =
+    /(^|[^A-Za-z0-9-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)/g;
   const out = new Set();
   let m;
   while ((m = re.exec(clean)) !== null) out.add(m[2]);
   return [...out];
 }
 
+/**
+ * Supports both schemas:
+ * A) nested: { "users": { "login": { "discord_id": "...", "aliases": [...] } } }
+ * B) flat:   { "login": "discord_id" } OR { "login": { "discord_id": "...", "aliases": [...] } }
+ */
 function buildUserIndex(mapJson) {
   const loginToDiscord = new Map(); // login -> discord_id
-  const aliasToLogin = new Map();   // alias -> canonical login
+  const aliasToLogin = new Map(); // alias -> canonical login
 
   const addLogin = (login, discordId) => {
     if (!login || !discordId) return;
@@ -48,7 +52,7 @@ function buildUserIndex(mapJson) {
     }
   };
 
-  // ---- Schema A (nested): { users: { login: { discord_id, aliases? } } } ----
+  // ---- Schema A (nested) ----
   if (mapJson?.users && typeof mapJson.users === "object") {
     for (const [login, info] of Object.entries(mapJson.users)) {
       if (!info) continue;
@@ -60,10 +64,9 @@ function buildUserIndex(mapJson) {
       }
     }
   }
-  // ---- Schema B (flat): { login: "discord_id" } OR { login: { discord_id, aliases? } } ----
+  // ---- Schema B (flat) ----
   else if (mapJson && typeof mapJson === "object") {
     for (const [login, val] of Object.entries(mapJson)) {
-      // ignore potential metadata keys if you ever add them
       if (login.startsWith("$") || login === "version") continue;
 
       if (typeof val === "string" || typeof val === "number") {
@@ -86,12 +89,12 @@ function buildUserIndex(mapJson) {
   return { resolveDiscordId };
 }
 
-async function postToDiscord({ content, embeds, userIdsToPing }) {
-  // Webhook + allowed_mentions is the safest way to ensure ONLY intended users get pinged. :contentReference[oaicite:4]{index=4}
+async function postToDiscord({ content = "", embeds = [], userIdsToPing = [] }) {
   const body = {
     content,
     embeds,
-    allowed_mentions: { users: userIdsToPing } // prevents @everyone/@here unless you explicitly add them
+    // Only allow pings to explicit user IDs we include here (prevents @everyone/@here)
+    allowed_mentions: { users: userIdsToPing }
   };
 
   const res = await fetch(webhookUrl, {
@@ -132,6 +135,82 @@ function assigneesString(issue, resolver) {
   return parts.join(" ");
 }
 
+/**
+ * Convert common GitHub comment formatting to Discord-friendly markdown.
+ * Note: Discord does NOT render HTML; this strips wrappers and downgrades headings.
+ */
+function githubToDiscord(text = "") {
+  let t = text;
+
+  // Convert HTML image tags to raw URLs (still useful as clickable text)
+  t = t.replace(/<img[^>]*src="([^"]+)"[^>]*>/gi, "$1");
+
+  // Strip common HTML wrappers
+  t = t.replace(/<\/?p[^>]*>/gi, "");
+  t = t.replace(/<\/?br\s*\/?>/gi, "\n");
+
+  // Convert heading level 4+ (#### ...) into bold lines (Discord only supports #/##/###)
+  t = t.replace(/^\s*####+\s*(.+)$/gm, "**$1**");
+
+  // Optional: compress extra blank lines
+  t = t.replace(/\n{3,}/g, "\n\n").trim();
+
+  return t;
+}
+
+function extractImageUrls(text = "") {
+  const urls = new Set();
+
+  // HTML: <img src="...">
+  {
+    const re = /<img[^>]*src="([^"]+)"[^>]*>/gi;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const u = m[1];
+      if (u) urls.add(u);
+    }
+  }
+
+  // Markdown images: ![alt](url)
+  {
+    const re = /!\[[^\]]*]\((https?:\/\/[^\s)]+)\)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const u = m[1];
+      if (u) urls.add(u);
+    }
+  }
+
+  // Standalone URLs (limit to likely image hosts / image-looking urls)
+  {
+    const re = /(https?:\/\/[^\s<>()"]+)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const u = m[1];
+      const lower = u.toLowerCase();
+      const looksLikeImage =
+        lower.includes("github.com/user-attachments/assets/") ||
+        lower.includes("user-images.githubusercontent.com/") ||
+        lower.endsWith(".png") ||
+        lower.endsWith(".jpg") ||
+        lower.endsWith(".jpeg") ||
+        lower.endsWith(".gif") ||
+        lower.endsWith(".webp");
+      if (looksLikeImage) urls.add(u);
+    }
+  }
+
+  return [...urls];
+}
+
+function buildScreenshotEmbeds(urls, jumpUrl, max = 2) {
+  return urls.slice(0, max).map((url, i) => ({
+    title: `Screenshot ${i + 1}`,
+    url: jumpUrl,
+    image: { url }
+  }));
+}
+
 const event = loadJson(process.env.GITHUB_EVENT_PATH);
 const eventName = process.env.GITHUB_EVENT_NAME;
 
@@ -153,10 +232,11 @@ if (eventName === "issues" && event.action === "assigned") {
 
   const content = `📌 ${assigneePing} — assigned`;
 
+  const formatted = githubToDiscord(issue.body ?? "");
   const embed = {
     title: `#${issue.number} — ${issue.title}`,
     url: issue.html_url,
-    description: truncate(issue.body ?? "", 2048) || "—",
+    description: truncate(formatted, 2048) || "—",
     color: 0x57F287, // green
     author: {
       name: `Assigned by ${assignerLogin ?? "unknown"}`,
@@ -182,9 +262,12 @@ if (eventName === "issues" && event.action === "assigned") {
     footer: { text: "GitHub → Discord" }
   };
 
+  const imgUrls = extractImageUrls(issue.body ?? "");
+  const screenshotEmbeds = buildScreenshotEmbeds(imgUrls, issue.html_url, 2);
+
   await postToDiscord({
     content,
-    embeds: [embed],
+    embeds: [embed, ...screenshotEmbeds],
     userIdsToPing: assigneeDid ? [assigneeDid] : []
   });
 }
@@ -197,7 +280,9 @@ if (eventName === "issue_comment" && event.action === "created") {
   const commenterLogin = comment.user?.login;
 
   // Extract @mentions from comment body, then resolve to Discord IDs
-  const mentionedLogins = extractGithubMentions(comment.body).filter(u => norm(u) !== norm(commenterLogin));
+  const mentionedLogins = extractGithubMentions(comment.body).filter(
+    u => norm(u) !== norm(commenterLogin)
+  );
   const mentionedDiscordIds = [...new Set(mentionedLogins.map(resolveDiscordId).filter(Boolean))];
 
   const mentionPings = mentionedLogins.length
@@ -207,10 +292,11 @@ if (eventName === "issue_comment" && event.action === "created") {
   // Ping only the mentioned users (if mapped)
   const content = mentionedDiscordIds.length ? `💬 ${mentionPings}` : `💬 New comment`;
 
+  const formatted = githubToDiscord(comment.body ?? "");
   const embed = {
     title: `#${issue.number} — ${issue.title}`,
     url: comment.html_url, // deep link to the comment
-    description: truncate(comment.body ?? "", 2048) || "—",
+    description: truncate(formatted, 2048) || "—",
     color: 0x5865F2, // blurple
     author: {
       name: `Comment by ${commenterLogin ?? "unknown"}`,
@@ -229,9 +315,12 @@ if (eventName === "issue_comment" && event.action === "created") {
     footer: { text: "GitHub → Discord" }
   };
 
+  const imgUrls = extractImageUrls(comment.body ?? "");
+  const screenshotEmbeds = buildScreenshotEmbeds(imgUrls, comment.html_url, 2);
+
   await postToDiscord({
     content,
-    embeds: [embed],
+    embeds: [embed, ...screenshotEmbeds],
     userIdsToPing: mentionedDiscordIds
   });
 }
