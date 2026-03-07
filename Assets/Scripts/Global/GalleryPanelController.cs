@@ -20,12 +20,20 @@ public class GalleryPanelController : MonoBehaviour
     [SerializeField] private Vector2 deleteButtonSize = new Vector2(30f, 30f);
     [SerializeField] private Color deleteButtonColor = new Color(0.8f, 0.15f, 0.15f, 0.95f);
 
+    [Header("Preview")]
+    [SerializeField] private Vector2 previewSize = new Vector2(1000f, 560f);
+    [SerializeField] private Vector2 previewCloseButtonSize = new Vector2(44f, 44f);
+
     private readonly List<Texture2D> loadedTextures = new List<Texture2D>();
+
+    private GameObject previewOverlay;
+    private RawImage previewRawImage;
 
     private void Awake()
     {
         EnsureContentRoot();
         EnsureLayout();
+        EnsurePreviewOverlay();
     }
 
     private void OnEnable()
@@ -106,6 +114,79 @@ public class GalleryPanelController : MonoBehaviour
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
     }
 
+    private void EnsurePreviewOverlay()
+    {
+        if (previewOverlay != null && previewRawImage != null) return;
+
+        Transform found = transform.Find("PreviewOverlay");
+        if (found != null)
+        {
+            previewOverlay = found.gameObject;
+            previewRawImage = found.GetComponentInChildren<RawImage>(true);
+            return;
+        }
+
+        previewOverlay = new GameObject("PreviewOverlay", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        previewOverlay.transform.SetParent(transform, false);
+
+        RectTransform overlayRt = previewOverlay.GetComponent<RectTransform>();
+        overlayRt.anchorMin = Vector2.zero;
+        overlayRt.anchorMax = Vector2.one;
+        overlayRt.offsetMin = Vector2.zero;
+        overlayRt.offsetMax = Vector2.zero;
+
+        Image overlayImage = previewOverlay.GetComponent<Image>();
+        overlayImage.color = new Color(0f, 0f, 0f, 0.82f);
+
+        GameObject previewObj = new GameObject("PreviewImage", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
+        previewObj.transform.SetParent(previewOverlay.transform, false);
+
+        RectTransform previewRt = previewObj.GetComponent<RectTransform>();
+        previewRt.anchorMin = new Vector2(0.5f, 0.5f);
+        previewRt.anchorMax = new Vector2(0.5f, 0.5f);
+        previewRt.pivot = new Vector2(0.5f, 0.5f);
+        previewRt.sizeDelta = previewSize;
+        previewRt.anchoredPosition = Vector2.zero;
+
+        previewRawImage = previewObj.GetComponent<RawImage>();
+        previewRawImage.color = Color.white;
+
+        GameObject closeObj = new GameObject("Button-ClosePreview", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        closeObj.transform.SetParent(previewOverlay.transform, false);
+
+        RectTransform closeRt = closeObj.GetComponent<RectTransform>();
+        closeRt.anchorMin = new Vector2(1f, 1f);
+        closeRt.anchorMax = new Vector2(1f, 1f);
+        closeRt.pivot = new Vector2(1f, 1f);
+        closeRt.anchoredPosition = new Vector2(-120f, -18f);
+        closeRt.sizeDelta = previewCloseButtonSize;
+
+        Image closeImage = closeObj.GetComponent<Image>();
+        closeImage.color = new Color(0.95f, 0.95f, 0.95f, 0.95f);
+
+        Button closeButton = closeObj.GetComponent<Button>();
+        closeButton.onClick.AddListener(ClosePreview);
+
+        GameObject xMark = new GameObject("Text-X", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        xMark.transform.SetParent(closeObj.transform, false);
+
+        RectTransform textRt = xMark.GetComponent<RectTransform>();
+        textRt.anchorMin = Vector2.zero;
+        textRt.anchorMax = Vector2.one;
+        textRt.offsetMin = Vector2.zero;
+        textRt.offsetMax = Vector2.zero;
+
+        Text t = xMark.GetComponent<Text>();
+        t.text = "X";
+        t.alignment = TextAnchor.MiddleCenter;
+        t.color = Color.black;
+        t.fontSize = 26;
+        t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        t.raycastTarget = false;
+
+        previewOverlay.SetActive(false);
+    }
+
     private void ClearItems()
     {
         for (int i = contentRoot.childCount - 1; i >= 0; i--)
@@ -121,6 +202,8 @@ public class GalleryPanelController : MonoBehaviour
         }
 
         loadedTextures.Clear();
+
+        ClosePreview();
     }
 
     private void CreateThumbnail(string imagePath)
@@ -138,7 +221,7 @@ public class GalleryPanelController : MonoBehaviour
 
         loadedTextures.Add(tex);
 
-        GameObject card = new GameObject($"Shot-{Path.GetFileNameWithoutExtension(imagePath)}", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement));
+        GameObject card = new GameObject($"Shot-{Path.GetFileNameWithoutExtension(imagePath)}", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(LayoutElement), typeof(Button));
         card.transform.SetParent(contentRoot, false);
 
         Image bg = card.GetComponent<Image>();
@@ -147,6 +230,10 @@ public class GalleryPanelController : MonoBehaviour
         LayoutElement le = card.GetComponent<LayoutElement>();
         le.preferredWidth = thumbnailSize.x;
         le.preferredHeight = thumbnailSize.y;
+
+        Button cardButton = card.GetComponent<Button>();
+        cardButton.targetGraphic = bg;
+        cardButton.onClick.AddListener(() => OpenPreview(tex));
 
         GameObject preview = new GameObject("Preview", typeof(RectTransform), typeof(CanvasRenderer), typeof(RawImage));
         preview.transform.SetParent(card.transform, false);
@@ -160,6 +247,7 @@ public class GalleryPanelController : MonoBehaviour
         RawImage raw = preview.GetComponent<RawImage>();
         raw.texture = tex;
         raw.color = Color.white;
+        raw.raycastTarget = false;
 
         CreateDeleteButton(card.transform, imagePath, tex, card);
     }
@@ -201,6 +289,21 @@ public class GalleryPanelController : MonoBehaviour
         t.raycastTarget = false;
     }
 
+    private void OpenPreview(Texture2D tex)
+    {
+        EnsurePreviewOverlay();
+        if (previewOverlay == null || previewRawImage == null || tex == null) return;
+
+        previewRawImage.texture = tex;
+        previewOverlay.SetActive(true);
+    }
+
+    public void ClosePreview()
+    {
+        if (previewRawImage != null) previewRawImage.texture = null;
+        if (previewOverlay != null) previewOverlay.SetActive(false);
+    }
+
     private void DeleteScreenshot(string imagePath, Texture2D tex, GameObject card)
     {
         try
@@ -212,6 +315,9 @@ public class GalleryPanelController : MonoBehaviour
             Debug.LogWarning($"Failed to delete screenshot: {imagePath}. {ex.Message}");
             return;
         }
+
+        if (previewRawImage != null && previewRawImage.texture == tex)
+            ClosePreview();
 
         if (tex != null)
         {

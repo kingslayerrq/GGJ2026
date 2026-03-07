@@ -480,6 +480,8 @@ MonoBehaviour:
   maxRows: 4
   deleteButtonSize: {x: 30, y: 30}
   deleteButtonColor: {r: 0.8, g: 0.15, b: 0.15, a: 0.95}
+  previewSize: {x: 1440, y: 810}
+  previewCloseButtonSize: {x: 60, y: 60}
 --- !u!1 &496720430
 GameObject:
   m_ObjectHideFlags: 0
