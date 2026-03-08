@@ -769,7 +769,7 @@ GameObject:
   - component: {fileID: 682928443}
   - component: {fileID: 682928442}
   m_Layer: 5
-  m_Name: Button-Settings
+  m_Name: Button_Settings
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1039,7 +1039,7 @@ GameObject:
   - component: {fileID: 778753799}
   - component: {fileID: 778753798}
   m_Layer: 5
-  m_Name: Button-StartGame
+  m_Name: Button_StartGame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1172,7 +1172,7 @@ GameObject:
   - component: {fileID: 920945125}
   - component: {fileID: 920945124}
   m_Layer: 5
-  m_Name: Button-Gallery
+  m_Name: Button_Gallery
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1771,7 +1771,7 @@ GameObject:
   - component: {fileID: 1747328306}
   - component: {fileID: 1747328305}
   m_Layer: 5
-  m_Name: Button-Close
+  m_Name: Button_Close
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1927,7 +1927,6 @@ RectTransform:
   - {fileID: 682928441}
   - {fileID: 2009482109}
   - {fileID: 325593715}
-  - {fileID: 2128842884}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2013,6 +2012,7 @@ MonoBehaviour:
   settingsTabPanel: {fileID: 2009482108}
   galleryPanel: {fileID: 325593712}
   galleryPanelController: {fileID: 325593716}
+  modalBlocker: {fileID: 0}
 --- !u!114 &1827214518
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2030,7 +2030,8 @@ MonoBehaviour:
   onlyInTargetScene: 1
   targetScenes:
   - RQScene
-  - TitleScene
+  - CrabAreaScene
+  - CrabRushScene
 --- !u!1 &1853040230
 GameObject:
   m_ObjectHideFlags: 0
@@ -2303,7 +2304,7 @@ GameObject:
   - component: {fileID: 2050410606}
   - component: {fileID: 2050410605}
   m_Layer: 5
-  m_Name: Button-Close
+  m_Name: Button_Close
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2436,7 +2437,7 @@ GameObject:
   - component: {fileID: 2069783055}
   - component: {fileID: 2069783054}
   m_Layer: 5
-  m_Name: Button-ExitGame
+  m_Name: Button_ExitGame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2629,11 +2630,11 @@ Transform:
   m_GameObject: {fileID: 2128842881}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -960, y: -540, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1827214513}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
@@ -2643,3 +2644,4 @@ SceneRoots:
   - {fileID: 51406353}
   - {fileID: 1596182130}
   - {fileID: 1827214513}
+  - {fileID: 2128842884}
