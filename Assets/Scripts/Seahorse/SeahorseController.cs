@@ -24,6 +24,11 @@ namespace Seahorse
                 Move = Vector2.zero;
                 return;
             }
+            if (DialogueManager.IsDialogueActive)
+            {
+                Move = Vector2.zero;
+                return;
+            }
 
             var kb = Keyboard.current;
             if (kb == null)
