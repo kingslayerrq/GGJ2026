@@ -41,6 +41,27 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Background
+    uniqueID: 2222329299
+    locked: 0
+  - name: Enviroment
+    uniqueID: 3960469743
+    locked: 0
+  - name: GameObject
+    uniqueID: 1241399683
+    locked: 0
+  - name: Player
+    uniqueID: 2276514087
+    locked: 0
+  - name: Prompt
+    uniqueID: 124249167
+    locked: 0
+  - name: foreground
+    uniqueID: 3696362781
+    locked: 0
+  - name: UI
+    uniqueID: 3652999831
+    locked: 0
   m_RenderingLayers:
   - Default
   - Light Layer 1

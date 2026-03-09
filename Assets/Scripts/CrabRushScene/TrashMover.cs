@@ -4,12 +4,12 @@ public class TrashMover : MonoBehaviour
 {
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float destroyX = -30f;
+    [SerializeField] private int damage = 25;
 
     private void Update()
     {
         transform.Translate(Vector3.left * moveSpeed * Time.deltaTime);
 
-        // destroy when left screen
         if (transform.position.x <= destroyX)
         {
             Destroy(gameObject);
@@ -20,7 +20,12 @@ public class TrashMover : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            Debug.Log("hit player");
+            PlayerHealth playerHealth = other.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(damage);
+            }
+
             Destroy(gameObject);
         }
     }
